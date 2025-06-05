@@ -22,7 +22,7 @@ Motionblob is a work-in-progress alternative to [MacMotionCues](https://github.c
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues, suggest features, or submit PRs ❤️
+Contributions are welcome; Feel free to open issues, suggest features, or submit PRs ^^
 
 ## Acknowledgement
 
