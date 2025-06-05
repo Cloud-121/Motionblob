@@ -74,3 +74,6 @@ void loop() {
   Serial.print(gy);
   Serial.print('\t');
   Serial.println(gz);
+
+
+}

@@ -9,4 +9,4 @@ else
     python -m pip install -r requirments.txt
 fi
 
-python pull.py
+python logging.py

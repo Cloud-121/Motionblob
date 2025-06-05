@@ -68,6 +68,7 @@ if phisical_conenction_connect():
                 with open("logs.txt", "a") as f:
                     f.write(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}\n")
                # time.sleep(0.02) # Logging data is captured as fast as possible and is slowed down in post.
+
         
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt detected. Exiting...")
