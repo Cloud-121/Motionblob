@@ -1,3 +1,4 @@
+// Essentially the same as the stock example code from the Adafruit library, mainly included for future changes such as wireless coms.
 
 #include "I2Cdev.h"
 #include "MPU6050.h" 
