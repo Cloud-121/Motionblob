@@ -1,2 +1,4 @@
+wheel
+setuptools
 pyserial
 PyQt5

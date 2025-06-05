@@ -3,10 +3,7 @@
 import serial
 import serial.tools.list_ports
 import time
-import threading
-import queue
 import sys
-from PyQt5 import QtCore, QtGui, QtWidgets
 
 baud_rate = 38400  # IMU baud rate
 ax = ay = az = gx = gy = gz = 0
