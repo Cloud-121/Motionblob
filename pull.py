@@ -61,6 +61,9 @@ def phisical_conenction_update():
             print(f"Serial communication error: {e}")
             s.close()
             return False
+    else: 
+        print(f"Raw line: {repr(line)}")
+
     return False
 
 if phisical_conenction_connect():
