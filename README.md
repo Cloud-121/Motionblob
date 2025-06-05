@@ -1,6 +1,6 @@
 <div align="center">
   <img
-    src="motionblob.webp"
+    src="logos/motionblob.webp"
     alt="Motionblob"
     width="256"
   >
