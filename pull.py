@@ -19,7 +19,11 @@ def phisical_conenction_connect():
     global s
     ports = list(serial.tools.list_ports.comports())
     for p in ports:
-        if "USB" in p.description or "UART" in p.description or "serial" in p.description.lower() or "CP210x" in p.description or "CH340" in p.description:
+        if ("USB" in p.description or "UART" in p.description
+            or "serial" in p.description.lower()
+            or "CP210x" in p.description
+            or "CH340" in p.description
+            or "ttyUSB" in p.device):
             try:
                 s = serial.Serial(p.device, baud_rate, timeout=1)
                 print(f"Connected to ESP32 on {p.device}")
