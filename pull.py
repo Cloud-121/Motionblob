@@ -65,6 +65,7 @@ def phisical_conenction_update():
 
 if phisical_conenction_connect():
     while True:
+        print("Waiting for data...")
         try:
             if phisical_conenction_update():
                 print(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}")
