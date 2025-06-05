@@ -16,7 +16,7 @@
   </p>
 </div>
 
-Motionblob is a work-in-progress alternative to [MacMotionCues](https://github.com/Lospi/MacMotionCues), built for Unix-like systems. It aims to bring motion cue-style indicators to open platforms.
+Motionblob is a work-in-progress alternative to [MacMotionCues](https://github.com/Lospi/MacMotionCues), built for Unix-like systems. It aims to bring motion cue-style indicators to Unix-like platforms.
 
 ---
 
