@@ -18,6 +18,7 @@ with open("logs.txt", "a") as f:
 def phisical_conenction_connect():
     global s
     ports = list(serial.tools.list_ports.comports())
+    print(ports)
     for p in ports:
         if ("USB" in p.description or "UART" in p.description
             or "serial" in p.description.lower()
