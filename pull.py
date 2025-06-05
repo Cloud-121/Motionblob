@@ -67,12 +67,16 @@ if phisical_conenction_connect():
     while True:
         print("Waiting for data...")
         try:
+
             if phisical_conenction_update():
                 print(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}")
                 #Log to logs.txt
                 with open("logs.txt", "a") as f:
                     f.write(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}\n")
                # time.sleep(0.02) # Logging data is captured as fast as possible and is slowed down in post.
+            else:
+                print("No data received. Retrying in 5 seconds...")
+                time.sleep(5)
         
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt detected. Exiting...")
