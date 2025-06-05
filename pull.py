@@ -18,13 +18,8 @@ with open("logs.txt", "a") as f:
 def phisical_conenction_connect():
     global s
     ports = list(serial.tools.list_ports.comports())
-    print(ports)
     for p in ports:
-        if ("USB" in p.description or "UART" in p.description
-            or "serial" in p.description.lower()
-            or "CP210x" in p.description
-            or "CH340" in p.description
-            or "ttyUSB" in p.device):
+        if "USB" in p.description or "UART" in p.description or "serial" in p.description.lower() or "CP210x" in p.description or "CH340" in p.description:
             try:
                 s = serial.Serial(p.device, baud_rate, timeout=1)
                 print(f"Connected to ESP32 on {p.device}")
@@ -62,25 +57,17 @@ def phisical_conenction_update():
             print(f"Serial communication error: {e}")
             s.close()
             return False
-    else: 
-        print(f"Raw line: {repr(line)}")
-
     return False
 
 if phisical_conenction_connect():
     while True:
-        print("Waiting for data...")
         try:
-
             if phisical_conenction_update():
                 print(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}")
                 #Log to logs.txt
                 with open("logs.txt", "a") as f:
                     f.write(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}\n")
                # time.sleep(0.02) # Logging data is captured as fast as possible and is slowed down in post.
-            else:
-                print("No data received. Retrying in 5 seconds...")
-                time.sleep(5)
         
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt detected. Exiting...")
