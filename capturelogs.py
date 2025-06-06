@@ -55,6 +55,8 @@ def phisical_conenction_update():
             return False
         except serial.SerialException as e:
             print(f"Serial communication error: {e}")
+            with open("logs.txt", "a") as f:
+                f.write(f"ERROR: {e}, {time.time()}\n")
             s.close()
             return False
     return False
@@ -79,7 +81,7 @@ if phisical_conenction_connect():
         except Exception as e:
             print("Error while reading serial data. error:", e)
             with open("logs.txt", "a") as f:
-                f.write(f"ERROR: {e}\n")
+                f.write(f"ERROR: {e}, {time.time()}\n")
             print("Attempting to reconnect...")
             while not phisical_conenction_connect():
                 print("Failed to reconnect. Retrying in 5 seconds...")
