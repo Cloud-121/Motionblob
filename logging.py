@@ -72,6 +72,8 @@ if phisical_conenction_connect():
         
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt detected. Exiting...")
+            with open("logs.txt", "a") as f:
+                f.write(f"END {time.time()}\n")
             break
 
         except Exception as e:
@@ -84,3 +86,4 @@ if phisical_conenction_connect():
                 time.sleep(5)
 else:
     print("Failed to connect to ESP32. Exiting...")
+    
