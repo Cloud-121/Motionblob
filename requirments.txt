@@ -2,3 +2,5 @@ wheel
 setuptools
 pyserial
 PyQt5
+dbus-python
+pygobject
