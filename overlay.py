@@ -136,7 +136,7 @@ class Overlay(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
         # Draw a semi-transparent background rectangle
-        painter.setBrush(QtGui.QColor(0, 0, 0, 150)) # Black with 150 alpha (out of 255)
+        painter.setBrush(QtGui.QColor(0, 0, 0, 0)) # Black with 150 alpha (out of 255)
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(self.rect(), 10, 10) # Rounded corners
 
@@ -156,16 +156,6 @@ class Overlay(QtWidgets.QWidget):
 
         if self.stop_event.is_set():
             self.close() # Close the overlay if stop event is set
-
-    def mousePressEvent(self, event):
-        # Allow dragging the window
-        self.oldPos = event.globalPos()
-
-    def mouseMoveEvent(self, event):
-        # Allow dragging the window
-        delta = QtCore.QPoint(event.globalPos() - self.oldPos)
-        self.move(self.x() + delta.x(), self.y() + delta.y())
-        self.oldPos = event.globalPos()
 
 # --- End Overlay Class Definition ---
 
