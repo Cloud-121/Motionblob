@@ -14,7 +14,7 @@ import os
 # Location for files
 CONFIG_FILE = 'config.json'
 logo_path = 'logos/motionblob.png'
-socketport = 5000
+socketport = 1202
 
 # Functions for reading config
 
@@ -42,7 +42,6 @@ def write_config(value, new_value):
 def backend_communication(command):
     if command == "connection_status":
         try:
-            # Set a timeout to avoid long waits on a failed connection
             if requests.get(f"http://127.0.0.1:{socketport}/status", timeout=1).status_code == 200:
                 return True
         except requests.exceptions.ConnectionError:
@@ -55,6 +54,11 @@ def backend_communication(command):
             return True
         except:
             return False
+    elif command == "state":
+        try:
+            return requests.get(f"http://127.0.0.1:{socketport}/status").json()["status"]
+        except:
+            return "Unknown"
 
 #frontend
 class Frontendbase(QWidget):
@@ -86,6 +90,11 @@ class Frontendbase(QWidget):
         self.backend_status_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(self.backend_status_label)
 
+        # The label is now created without the initial status text
+        self.backend_state_label = QLabel(" ", self)
+        self.backend_state_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.backend_state_label)
+
         # 2. SETUP AND START THE QTIMER
         # Create a QTimer instance
         self.status_timer = QTimer(self)
@@ -106,6 +115,7 @@ class Frontendbase(QWidget):
 
         self.phone_radio = QRadioButton("Phone", self)
         self.esp32_radio = QRadioButton("ESP32", self)
+
 
         self.imu_type_button_group = QButtonGroup(self)
         self.imu_type_button_group.addButton(self.phone_radio)
@@ -140,10 +150,18 @@ class Frontendbase(QWidget):
             backend_status = "Connected"
             # Set style for better visual feedback (green text)
             self.backend_status_label.setStyleSheet("color: green;")
+
+            # Update the backend state label
+            self.backend_state_label.setText(f"State: {backend_communication('state')}")
         else:
             backend_status = "Disconnected"
             # Set style for better visual feedback (red text)
             self.backend_status_label.setStyleSheet("color: red;")
+
+            # Update the backend state label
+            self.backend_state_label.setText("")
+
+        
             
         self.backend_status_label.setText(f"Backend Status: {backend_status}")
 

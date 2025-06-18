@@ -58,6 +58,17 @@ def checkconfig():
 
 
 # --- REST API Endpoint ---
+
+@app.route('/', methods=['GET'])
+def index():
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append({
+            "route": str(rule),
+            "methods": list(rule.methods)
+        })
+    return jsonify({"routes": routes})
+
 @app.route('/imu_data', methods=['GET'])
 def get_imu_data():
     """
@@ -211,7 +222,7 @@ def run_flask_app():
     """
     Runs the Flask application.
     """
-    app.run(host='0.0.0.0', port=5000, debug=False) # debug=False for production
+    app.run(host='0.0.0.0', port=1202, debug=False) # debug=False for production
 
 if __name__ == '__main__':
     # Load config
