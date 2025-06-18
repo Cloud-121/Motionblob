@@ -221,7 +221,7 @@ def phisical_conenction_connect():
 
 def phisical_conenction_update():
     global ax, ay, az, gx, gy, gz
-    if currentconfig["IMU_TYPE"] == "ESP32":
+    if currentconfig["IMU_TYPE"] == "ESP32" and s is not None:
         try:
                 line = s.readline().decode('utf-8').strip()
                 if line:
@@ -242,8 +242,6 @@ def phisical_conenction_update():
                         pass
         except serial.SerialException as e:
                 print(f"Serial communication error: {e}")
-                with open("logs.txt", "a") as f:
-                    f.write(f"ERROR: {e}, {time.time()}\n")
                 s.close()
                 return False
         return False
