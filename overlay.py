@@ -5,13 +5,90 @@ import threading
 import queue
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
+import requests
+from flask import Flask, jsonify # Import Flask and jsonify
+import json
 
+# --- Global Variables ---
 baud_rate = 38400  # IMU baud rate
 ax = ay = az = gx = gy = gz = 0
 s = None  # Serial port object
 retryconenction = True
 crashamount = 0
 currentstate = "STANDYBY"
+
+# --- Data Queue for Overlay ---
+data_queue = queue.Queue()
+stop_event = threading.Event()
+
+# --- Flask App Initialization ---
+app = Flask(__name__)
+
+#Config handling
+currentconfig = {}
+
+CONFIG_FILE = 'config.json'
+
+def read_config(value):    
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = json.load(f)
+        return config[value]
+    except Exception as e:
+        print(f"Error reading config.json: {e}")
+        return None
+
+def write_config(value, new_value):
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = json.load(f)
+        config[value] = new_value
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=4)
+    except Exception as e:
+        print(f"Error writing config.json: {e}")
+
+def checkconfig():
+    global currentconfig
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            currentconfig = json.load(f)
+    except Exception as e:
+        print(f"Error reading config.json: {e}")
+
+
+# --- REST API Endpoint ---
+@app.route('/imu_data', methods=['GET'])
+def get_imu_data():
+    """
+    Returns the current IMU data as a JSON object.
+    """
+    imu_data = {
+        "accelerometer": {
+            "x": ax,
+            "y": ay,
+            "z": az
+        },
+        "gyroscope": {
+            "x": gx,
+            "y": gy,
+            "z": gz
+        },
+        "status": currentstate
+    }
+    return jsonify(imu_data)
+
+
+@app.route('/status', methods=['GET'])
+def get_status():
+    global currentstate
+    return jsonify({"status": currentstate})
+
+@app.route('/refreshconfig', methods=['POST'])
+def refresh_config():
+    checkconfig()
+    return jsonify({"status": "Config Refreshed"})
+
 
 # --- Overlay Class Definition ---
 class Overlay(QtWidgets.QWidget):
@@ -92,7 +169,6 @@ class Overlay(QtWidgets.QWidget):
 
 # --- End Overlay Class Definition ---
 
-
 def phisical_conenction_connect():
     global s
     ports = list(serial.tools.list_ports.comports())
@@ -109,101 +185,112 @@ def phisical_conenction_connect():
 
 def phisical_conenction_update():
     global ax, ay, az, gx, gy, gz
-    if s and s.is_open:
-        try:
-            if s.in_waiting > 0:
-                line = s.readline().decode('utf-8').strip()
-                if line:
-                    data = line.split('\t')
-                    if len(data) == 6:
-                        try:
-                            ax = int(data[0])
-                            ay = int(data[1])
-                            az = int(data[2])
-                            gx = int(data[3])
-                            gy = int(data[4])
-                            gz = int(data[5])
-                            return True
-                        except ValueError:
-                            print(f"Error parsing data: {line}")
-                    else:
-                        print(f"Received malformed line or incomplete: {line}")
-                        pass
-            return False
-        except serial.SerialException as e:
+    try:
+            line = s.readline().decode('utf-8').strip()
+            if line:
+                data = line.split('\t')
+                if len(data) == 6:
+                    try:
+                        ax = int(data[0])
+                        ay = int(data[1])
+                        az = int(data[2])
+                        gx = int(data[3])
+                        gy = int(data[4])
+                        gz = int(data[5])
+                        return True
+                    except ValueError:
+                        print(f"Error parsing data: {line}")
+                else:
+                    print(f"Received malformed line or incomplete: {line}")
+                    pass
+    except serial.SerialException as e:
             print(f"Serial communication error: {e}")
+            with open("logs.txt", "a") as f:
+                f.write(f"ERROR: {e}, {time.time()}\n")
             s.close()
             return False
     return False
 
 def run_gui(data_queue, stop_event):
-    app = QtWidgets.QApplication(sys.argv)
+    app_qt = QtWidgets.QApplication(sys.argv) # Renamed to avoid conflict with Flask app
     overlay = Overlay(data_queue, stop_event)
     overlay.show()
-    sys.exit(app.exec_())
+    sys.exit(app_qt.exec_()) # Use app_qt here
 
+def run_flask_app():
+    """
+    Runs the Flask application.
+    """
+    app.run(host='0.0.0.0', port=5000, debug=False) # debug=False for production
 
-    data_queue = queue.Queue()
-    stop_event = threading.Event()
+if __name__ == '__main__':
+    # Load config
+    checkconfig()
 
     # Start GUI thread
     gui_thread = threading.Thread(target=run_gui, args=(data_queue, stop_event), daemon=True)
     gui_thread.start()
 
-while True:
+    # Start Flask API thread
+    flask_thread = threading.Thread(target=run_flask_app, daemon=True)
+    flask_thread.start()
+
     while True:
         try:
-            #Check for esp32 conenction
+            # Check for esp32 connection
             if not phisical_conenction_connect():
                 if currentstate != "STANDYBY":
                     currentstate = "STANDYBY"
-                time.sleep(10)
+                time.sleep(1) # Reduced sleep for quicker connection attempts
                 continue
             elif currentstate == "STANDYBY":
                 currentstate = "CONNECTED"
+                print("IMU Connected. Current State: CONNECTED")
 
-            # Veryify the connection to esp32 is working
+            # Verify the connection to esp32 is working
             if currentstate == "CONNECTED":
                 if phisical_conenction_update():
                     currentstate = "READY"
-            
+                    print("IMU Data Flowing. Current State: READY")
+                else:
+                    print("error update")
 
-            # Start up the overlay and any other tasks before enterting the primary loop
-            if currentstate == "READY":
-                #run_gui(data_queue, stop_event) needs to be re-implemented
-                currentstate = "RUNNING"
-            
             # Primary loop handling overlay and feeding esp32 IMU data.
-            if currentstate == "RUNNING":
-                #PLACEHOLDER
-                # Not currently implmented.
-                print("PLACEHOLDER")
+            if currentstate == "READY" or currentstate == "RUNNING":
+                if phisical_conenction_update():
+                    imu_display_data = (
+                        f"Ax: {ax:04d}, Ay: {ay:04d}, Az: {az:04d}\n"
+                        f"Gx: {gx:04d}, Gy: {gy:04d}, Gz: {gz:04d}"
+                    )
+                    try:
+                        data_queue.put_nowait(imu_display_data)
+                    except queue.Full:
+                        pass # Queue is full, skip update for this cycle
+                else:
+                    print("Lost IMU data, retrying connection...")
+                    currentstate = "STANDYBY"
 
-
-            #Check for crash amount
+            # Check for crash amount (currently not directly related to Flask)
             if crashamount > 5:
-                print("Overlay has crashed 5 times. Something is wrong. Exiting")
+                print("Too many crashes. Exiting.")
+                stop_event.set() # Signal GUI to close
                 break
-
-
-
 
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt detected. Exiting")
+            stop_event.set() # Signal GUI to close
             currentstate = "EXIT"
             break
-        
+
         except Exception as e:
-            if crashamount > 5:
-                print("Overlay has crashed 5 times. Something is wrong.Exiting")
-                break
-
             crashamount += 1
-            print("Error something fucked up. error:", e)
-            print(f"Restarting in 20 seconds to hopefully let it recover, crash amount: {crashamount}")
-            time.sleep(20)
+            print(f"Error: {e}")
+            if crashamount > 5:
+                print("Too many crashes. Exiting.")
+                stop_event.set() # Signal GUI to close
+                break
+            print(f"Restarting in 5 seconds to hopefully recover. Crash count: {crashamount}")
+            time.sleep(5) # Shorter sleep for faster recovery attempts
 
-    if crashamount > 5 or currentstate == "EXIT":
-        print("Overlay shutting down.")
-        break
-
+    print("Main application shutting down.")
+    sys.exit(0) # Ensure a clean exit for the main thread

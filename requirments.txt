@@ -1,6 +1,7 @@
 wheel
 setuptools
 pyserial
+pycairo
 PyQt5
-dbus-python
-pygobject
+flask
+requests

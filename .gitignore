@@ -1,2 +1,4 @@
 logs.txt
 config.json
+/venv
+/__pycache__
