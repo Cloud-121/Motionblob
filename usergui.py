@@ -169,7 +169,7 @@ class Frontendbase(QWidget):
             self.backend_state_label.setText("")
         self.backend_status_label.setText(f"Backend Status: {backend_status}")
 
----
+
     def save_phone_ip(self):
         """Saves the content of the phone IP input field to the config."""
         ip_address = self.phone_ip_input.text()
