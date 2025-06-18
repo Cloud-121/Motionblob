@@ -5,3 +5,4 @@ pycairo
 PyQt5
 flask
 requests
+websocket-client

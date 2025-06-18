@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout,
     QLabel, QPushButton, QMessageBox, QHBoxLayout,
-    QGroupBox, QRadioButton, QButtonGroup
+    QGroupBox, QRadioButton, QButtonGroup, QLineEdit
 )
 # 1. IMPORT QTIMER
 from PyQt5.QtCore import Qt, QTimer
@@ -29,6 +29,7 @@ def read_config(value):
 
 def write_config(value, new_value):
     try:
+
         with open(CONFIG_FILE, 'r') as f:
             config = json.load(f)
         config[value] = new_value
@@ -85,25 +86,18 @@ class Frontendbase(QWidget):
             main_layout.addWidget(self.logo_label)
             print(f"Error: Logo file not found at '{logo_path}'. Please ensure the path is correct and the file exists.")
 
-        # The label is now created without the initial status text
         self.backend_status_label = QLabel("Backend Status: Checking...", self)
         self.backend_status_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(self.backend_status_label)
 
-        # The label is now created without the initial status text
         self.backend_state_label = QLabel(" ", self)
         self.backend_state_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(self.backend_state_label)
 
-        # 2. SETUP AND START THE QTIMER
-        # Create a QTimer instance
         self.status_timer = QTimer(self)
-        # Connect the timer's timeout signal to the update function
         self.status_timer.timeout.connect(self.update_connection_status)
-        # Start the timer to run every 3000 milliseconds (3 seconds)
-        self.status_timer.start(6000) #just to save the smallest power on checking the backend :3
+        self.status_timer.start(6000)
 
-        # 3. PERFORM THE INITIAL STATUS CHECK MANUALLY
         self.update_connection_status()
 
         imu_settings_groupbox = QGroupBox("IMU Selection", self)
@@ -113,9 +107,28 @@ class Frontendbase(QWidget):
         self.imu_type_display_label.setAlignment(Qt.AlignCenter)
         imu_layout.addWidget(self.imu_type_display_label)
 
-        self.phone_radio = QRadioButton("Phone", self)
-        self.esp32_radio = QRadioButton("ESP32", self)
+        phone_layout = QHBoxLayout()
 
+        self.phone_radio = QRadioButton("Phone", self)
+
+        self.phone_ip_input = QLineEdit(self)
+        self.phone_ip_input.setPlaceholderText("Enter Phone IP")
+
+        self.phone_ip_input.setText(read_config("PHONE_IP") or "") 
+
+        self.phone_ip_input.editingFinished.connect(self.save_phone_ip)
+        
+
+        phone_layout.addWidget(self.phone_radio)
+        phone_layout.addWidget(self.phone_ip_input)
+        
+        self.esp32_radio = QRadioButton("ESP32", self)
+        
+
+        imu_layout.addLayout(phone_layout)
+
+        imu_layout.addWidget(self.esp32_radio)
+        
 
         self.imu_type_button_group = QButtonGroup(self)
         self.imu_type_button_group.addButton(self.phone_radio)
@@ -126,11 +139,12 @@ class Frontendbase(QWidget):
 
         if self.current_imu_type == 'Phone':
             self.phone_radio.setChecked(True)
+            self.phone_ip_input.setEnabled(True)
         elif self.current_imu_type == 'ESP32':
             self.esp32_radio.setChecked(True)
-
-        imu_layout.addWidget(self.phone_radio)
-        imu_layout.addWidget(self.esp32_radio)
+            self.phone_ip_input.setEnabled(False)
+        else:
+            self.phone_ip_input.setEnabled(False)
 
         imu_settings_groupbox.setLayout(imu_layout)
         main_layout.addWidget(imu_settings_groupbox)
@@ -143,27 +157,26 @@ class Frontendbase(QWidget):
 
         self.setLayout(main_layout)
 
-    # 4. CREATE THE DEDICATED UPDATE FUNCTION
     def update_connection_status(self):
         """Checks the backend connection and updates the status label."""
         if backend_communication("connection_status"):
             backend_status = "Connected"
-            # Set style for better visual feedback (green text)
             self.backend_status_label.setStyleSheet("color: green;")
-
-            # Update the backend state label
             self.backend_state_label.setText(f"State: {backend_communication('state')}")
         else:
             backend_status = "Disconnected"
-            # Set style for better visual feedback (red text)
             self.backend_status_label.setStyleSheet("color: red;")
-
-            # Update the backend state label
             self.backend_state_label.setText("")
-
-        
-            
         self.backend_status_label.setText(f"Backend Status: {backend_status}")
+
+---
+    def save_phone_ip(self):
+        """Saves the content of the phone IP input field to the config."""
+        ip_address = self.phone_ip_input.text()
+        print(f"Saving Phone IP: {ip_address}")
+        write_config('PHONE_IP', ip_address)
+        # Notify the backend that the config has changed
+        backend_communication("update_config")
 
     def set_imu_type(self, imu_type):
         if self.current_imu_type == imu_type:
@@ -173,13 +186,13 @@ class Frontendbase(QWidget):
         if imu_type == 'Phone':
             print("Phone IMU selected")
             write_config('IMU_TYPE', 'Phone')
-            #send socket update to refresh config data
+            self.phone_ip_input.setEnabled(True)
             backend_communication("update_config")
 
         elif imu_type == 'ESP32':
             print("ESP32 IMU selected")
             write_config('IMU_TYPE', 'ESP32')
-            #send socket update to refresh config data
+            self.phone_ip_input.setEnabled(False)
             backend_communication("update_config")
 
         self.imu_type_display_label.setText(f'Current IMU: {self.current_imu_type}')

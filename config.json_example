@@ -1,3 +1,4 @@
 {
-    "IMU_TYPE": "ESP32"
+    "IMU_TYPE": "ESP32",
+    "PHONE_IP_PORT": ""
 }

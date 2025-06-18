@@ -1,3 +1,4 @@
 {
-    "IMU_TYPE": "ESP32"
+    "IMU_TYPE": "Phone",
+    "PHONE_IP": "192.168.167.238:8080"
 }

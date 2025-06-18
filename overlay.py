@@ -8,6 +8,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import requests
 from flask import Flask, jsonify # Import Flask and jsonify
 import json
+import websocket
 
 # --- Global Variables ---
 baud_rate = 38400  # IMU baud rate
@@ -120,12 +121,13 @@ class Overlay(QtWidgets.QWidget):
         self.setWindowFlags(
             QtCore.Qt.WindowStaysOnTopHint |
             QtCore.Qt.FramelessWindowHint |
-            QtCore.Qt.X11BypassWindowManagerHint
+            QtCore.Qt.WindowDoesNotAcceptFocus |
+            QtCore.Qt.WindowTransparentForInput
         )
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         # Set initial geometry (can be adjusted)
-        self.setGeometry(100, 100, 600, 100) # x, y, width, height
+        self.setGeometry(100, 500, 300, 600) # x, y, width, height
 
         # Create a QLabel to display the text
         self.label = QtWidgets.QLabel(self.imu_text, self)
@@ -171,46 +173,78 @@ class Overlay(QtWidgets.QWidget):
 # --- End Overlay Class Definition ---
 
 def phisical_conenction_connect():
-    global s
-    ports = list(serial.tools.list_ports.comports())
-    for p in ports:
-        if "USB" in p.description or "UART" in p.description or "serial" in p.description.lower() or "CP210x" in p.description or "CH340" in p.description:
-            try:
-                s = serial.Serial(p.device, baud_rate, timeout=1)
-                return True
-            except serial.SerialException as e:
-                print(f"Could not open serial port {p.device}: {e}")
-                return False
-    print("No ESP32 serial port found.")
-    return False
+    if currentconfig["IMU_TYPE"] == "ESP32":
+        global s
+        ports = list(serial.tools.list_ports.comports())
+        for p in ports:
+            if "USB" in p.description or "UART" in p.description or "serial" in p.description.lower() or "CP210x" in p.description or "CH340" in p.description:
+                try:
+                    s = serial.Serial(p.device, baud_rate, timeout=1)
+                    return True
+                except serial.SerialException as e:
+                    print(f"Could not open serial port {p.device}: {e}")
+                    return False
+        print("No ESP32 serial port found.")
+        return 
+    elif currentconfig["IMU_TYPE"] == "Phone":
+        try:
+            ws = websocket.create_connection(f"ws://{currentconfig['PHONE_IP']}/sensor/connect?type=android.sensor.accelerometer")
+            data = ws.recv()
+            ws.close()
+            return True
+        except Exception as e:
+            print(f"Error connecting to phone: {e}")
+            return False
 
 def phisical_conenction_update():
     global ax, ay, az, gx, gy, gz
-    try:
-            line = s.readline().decode('utf-8').strip()
-            if line:
-                data = line.split('\t')
-                if len(data) == 6:
-                    try:
-                        ax = int(data[0])
-                        ay = int(data[1])
-                        az = int(data[2])
-                        gx = int(data[3])
-                        gy = int(data[4])
-                        gz = int(data[5])
-                        return True
-                    except ValueError:
-                        print(f"Error parsing data: {line}")
-                else:
-                    print(f"Received malformed line or incomplete: {line}")
-                    pass
-    except serial.SerialException as e:
-            print(f"Serial communication error: {e}")
-            with open("logs.txt", "a") as f:
-                f.write(f"ERROR: {e}, {time.time()}\n")
-            s.close()
+    if currentconfig["IMU_TYPE"] == "ESP32":
+        try:
+                line = s.readline().decode('utf-8').strip()
+                if line:
+                    data = line.split('\t')
+                    if len(data) == 6:
+                        try:
+                            ax = int(data[0])
+                            ay = int(data[1])
+                            az = int(data[2])
+                            gx = int(data[3])
+                            gy = int(data[4])
+                            gz = int(data[5])
+                            return True
+                        except ValueError:
+                            print(f"Error parsing data: {line}")
+                    else:
+                        print(f"Received malformed line or incomplete: {line}")
+                        pass
+        except serial.SerialException as e:
+                print(f"Serial communication error: {e}")
+                with open("logs.txt", "a") as f:
+                    f.write(f"ERROR: {e}, {time.time()}\n")
+                s.close()
+                return False
+        return False
+    elif currentconfig["IMU_TYPE"] == "Phone":
+        try:
+            ws = websocket.create_connection(f"ws://{currentconfig['PHONE_IP']}/sensor/connect?type=android.sensor.accelerometer")
+            data = ws.recv()
+
+            data = json.loads(data)
+
+            values = data["values"]
+            timestamp = data["timestamp"]
+            accuracy = data["accuracy"]
+
+            ax = int(values[0])
+            ay = int(values[1])
+            az = int(values[2])
+            gx = 0
+            gy = 0
+            gz = 0
+            return True
+        except Exception as e:
+            print(f"Error connecting to phone: {e}")
             return False
-    return False
 
 def run_gui(data_queue, stop_event):
     app_qt = QtWidgets.QApplication(sys.argv) # Renamed to avoid conflict with Flask app
