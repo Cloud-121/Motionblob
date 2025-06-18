@@ -1,1 +1,3 @@
-Contains Data for testing, contains data from a basic drive that was captured using the logging.py script
+# Example Data for testing
+
+## desklogs.txt - Just it sitting on my desk ;3
