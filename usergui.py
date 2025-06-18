@@ -2,7 +2,8 @@ import sys
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout,
     QLabel, QPushButton, QMessageBox, QHBoxLayout,
-    QGroupBox, QRadioButton, QButtonGroup, QLineEdit
+    QGroupBox, QRadioButton, QButtonGroup, QLineEdit,
+    QProgressDialog # Import QProgressDialog
 )
 # 1. IMPORT QTIMER
 from PyQt5.QtCore import Qt, QTimer
@@ -60,6 +61,19 @@ def backend_communication(command):
             return requests.get(f"http://127.0.0.1:{socketport}/status").json()["status"]
         except:
             return "Unknown"
+    elif command == "start_calibration":
+        try:
+            requests.post(f"http://127.0.0.1:{socketport}/start_calibration")
+            return True
+        except:
+            return False
+    elif command == "finish_calibration":
+        try:
+            requests.post(f"http://127.0.0.1:{socketport}/stop_calibration")
+            return True
+        except:
+            return False
+
 
 #frontend
 class Frontendbase(QWidget):
@@ -114,21 +128,25 @@ class Frontendbase(QWidget):
         self.phone_ip_input = QLineEdit(self)
         self.phone_ip_input.setPlaceholderText("Enter Phone IP")
 
-        self.phone_ip_input.setText(read_config("PHONE_IP") or "") 
+        self.phone_ip_input.setText(read_config("PHONE_IP") or "")
 
         self.phone_ip_input.editingFinished.connect(self.save_phone_ip)
-        
+
 
         phone_layout.addWidget(self.phone_radio)
         phone_layout.addWidget(self.phone_ip_input)
-        
+
+        esp32_layout = QHBoxLayout() # Create a horizontal layout for ESP32 radio and calibration button
         self.esp32_radio = QRadioButton("ESP32", self)
-        
+        esp32_layout.addWidget(self.esp32_radio)
+
+        self.start_calibration_button = QPushButton("Start Calibration", self)
+        self.start_calibration_button.clicked.connect(self.start_calibration_popup)
+        esp32_layout.addWidget(self.start_calibration_button)
 
         imu_layout.addLayout(phone_layout)
+        imu_layout.addLayout(esp32_layout) # Add the new layout for ESP32 and calibration button
 
-        imu_layout.addWidget(self.esp32_radio)
-        
 
         self.imu_type_button_group = QButtonGroup(self)
         self.imu_type_button_group.addButton(self.phone_radio)
@@ -140,11 +158,14 @@ class Frontendbase(QWidget):
         if self.current_imu_type == 'Phone':
             self.phone_radio.setChecked(True)
             self.phone_ip_input.setEnabled(True)
+            self.start_calibration_button.setEnabled(False) # Disable calibration button for Phone
         elif self.current_imu_type == 'ESP32':
             self.esp32_radio.setChecked(True)
             self.phone_ip_input.setEnabled(False)
+            self.start_calibration_button.setEnabled(True) # Enable calibration button for ESP32
         else:
             self.phone_ip_input.setEnabled(False)
+            self.start_calibration_button.setEnabled(False)
 
         imu_settings_groupbox.setLayout(imu_layout)
         main_layout.addWidget(imu_settings_groupbox)
@@ -187,15 +208,58 @@ class Frontendbase(QWidget):
             print("Phone IMU selected")
             write_config('IMU_TYPE', 'Phone')
             self.phone_ip_input.setEnabled(True)
+            self.start_calibration_button.setEnabled(False) # Disable calibration button
             backend_communication("update_config")
 
         elif imu_type == 'ESP32':
             print("ESP32 IMU selected")
             write_config('IMU_TYPE', 'ESP32')
             self.phone_ip_input.setEnabled(False)
+            self.start_calibration_button.setEnabled(True) # Enable calibration button
             backend_communication("update_config")
 
         self.imu_type_display_label.setText(f'Current IMU: {self.current_imu_type}')
+
+    def start_calibration_popup(self):
+        if not backend_communication("connection_status"):
+            QMessageBox.warning(self, "Calibration Error", "Cannot start calibration: Backend is disconnected.")
+            return
+
+        if backend_communication("start_calibration"):
+            self.calibration_progress_dialog = QProgressDialog("Calibrating...", None, 0, 100, self)
+            self.calibration_progress_dialog.setWindowTitle("Calibration in Progress")
+            self.calibration_progress_dialog.setWindowModality(Qt.WindowModal)
+            self.calibration_progress_dialog.setMinimumDuration(0)
+            self.calibration_progress_dialog.setValue(0)
+            self.calibration_progress_dialog.show()
+
+            self.progress_timer = QTimer(self)
+            self.progress_timer.timeout.connect(self.update_calibration_progress)
+            self.progress_count = 0
+            self.progress_timer.start(100) # Update every 0.1 seconds for 10 seconds total
+
+            QTimer.singleShot(10000, self.finish_calibration_process) # 10 seconds total for calibration
+        else:
+            QMessageBox.critical(self, "Calibration Error", "Failed to send start calibration command to backend.")
+
+    def update_calibration_progress(self):
+        self.progress_count += 1
+        progress = int((self.progress_count / 100.0) * 100) # 100 updates over 10 seconds (100 * 0.1s)
+        self.calibration_progress_dialog.setValue(progress)
+        if self.progress_count >= 100:
+            self.progress_timer.stop()
+
+    def finish_calibration_process(self):
+        self.calibration_progress_dialog.close()
+        if backend_communication("finish_calibration"):
+            msg_box = QMessageBox(self)
+            msg_box.setWindowTitle("Calibration Complete")
+            msg_box.setText("Calibration finished successfully!")
+            finish_button = msg_box.addButton("Finish", QMessageBox.AcceptRole)
+            msg_box.setIcon(QMessageBox.Information)
+            msg_box.exec_()
+        else:
+            QMessageBox.critical(self, "Calibration Error", "Failed to send finish calibration command to backend.")
 
 
 if __name__ == '__main__':

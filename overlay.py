@@ -14,7 +14,10 @@ import websocket
 baud_rate = 38400  # IMU baud rate
 ax = ay = az = gx = gy = gz = 0
 s = None  # Serial port object
+global retryconenction, capture_stablization, finish_stablization, crashamount
 retryconenction = True
+capture_stablization = False
+finish_stablization = False
 crashamount = 0
 currentstate = "STANDYBY"
 
@@ -101,6 +104,18 @@ def refresh_config():
     checkconfig()
     return jsonify({"status": "Config Refreshed"})
 
+@app.route('/start_calibration', methods=['POST'])
+def start_calibration():
+    global capture_stablization
+    capture_stablization = True
+    return jsonify({"status": "Calibration started"})
+
+@app.route('/stop_calibration', methods=['POST'])
+def stop_calibration():
+    global capture_stablization
+    finish_stablization = True
+    return jsonify({"status": "Calibration stopped"})
+
 
 # --- Overlay Class Definition ---
 class Overlay(QtWidgets.QWidget):
@@ -171,6 +186,13 @@ class Overlay(QtWidgets.QWidget):
             self.close() # Close the overlay if stop event is set
 
 # --- End Overlay Class Definition ---
+
+def capture_esp32_stablization_offset(ax, ay, az, gx, gy, gz):
+    print("Capturing ESP32 Stablization Offset")
+    print("Not yet implemented")
+    if finish_stablization:
+        capture_stablization = False
+        finish_stablization = False
 
 def phisical_conenction_connect():
     if currentconfig["IMU_TYPE"] == "ESP32":
@@ -293,6 +315,12 @@ if __name__ == '__main__':
             # Primary loop handling overlay and feeding esp32 IMU data.
             if currentstate == "READY" or currentstate == "RUNNING":
                 if phisical_conenction_update():
+                    # stablization calibration for esp32 IMU
+                    if capture_stablization:
+                        #Check to make sure were using esp32 beause using a phone is fucked :3
+                        if currentconfig["IMU_TYPE"] == "ESP32":
+                            capture_esp32_stablization_offset(ax, ay, az, gx, gy, gz)
+                    
                     imu_display_data = (
                         f"Ax: {ax:04d}, Ay: {ay:04d}, Az: {az:04d}\n"
                         f"Gx: {gx:04d}, Gy: {gy:04d}, Gz: {gz:04d}"
