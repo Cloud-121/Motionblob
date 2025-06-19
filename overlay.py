@@ -260,6 +260,13 @@ def phisical_conenction_update():
             return False
 
 def phone_imu_thread_func():
+    try:
+        print("Trying to connect to phone")
+        ws = websocket.create_connection(f"ws://{currentconfig['PHONE_IP']}/sensor/connect?type=android.sensor.accelerometer")
+        print("Connected to phone")
+    except Exception as e:
+        print(f"Error connecting to phone: {e}")
+        return
     ws = websocket.create_connection(f"ws://{currentconfig['PHONE_IP']}/sensor/connect?type=android.sensor.accelerometer")
     global ax, ay, az, gx, gy, gz
     try:
