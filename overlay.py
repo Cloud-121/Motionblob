@@ -270,7 +270,7 @@ def phone_imu_thread_func():
             ax = int(values[0])
             ay = int(values[1])
             az = int(values[2])
-            gx = 0
+            gx = 0 # There's no point in getting gyro from phone, gyro data from esp32 is just for the funnies
             gy = 0
             gz = 0
     except websocket.WebSocketConnectionClosedException:
