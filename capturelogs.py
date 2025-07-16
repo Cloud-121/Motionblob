@@ -62,18 +62,34 @@ def phisical_conenction_update():
     return False
 
 if phisical_conenction_connect():
+    backlog_memory = []
     while True:
         try:
-            if phisical_conenction_update(): #TODO: load 100 lines into memory then dump into storage to save drives :3
+            if phisical_conenction_update():
                 print(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}")
-                #Log to logs.txt
-                with open("logs.txt", "a") as f:
-                    f.write(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}\n")
-               # time.sleep(0.02) # Logging data is captured as fast as possible and is slowed down in post.
+
+                #Load into memory
+                backlog_memory.append((ax, ay, az, gx, gy, gz))
+                
+                #Load memory to logs.txt
+                if len(backlog_memory) >= 1000:
+                    print("Dumping memory to logs.txt...")
+                    with open("logs.txt", "a") as f:
+                        for line in backlog_memory:
+                            f.write(f"Accel(x,y,z): ({line[0]}, {line[1]}, {line[2]})  Gyro(x,y,z): ({line[3]}, {line[4]}, {line[5]}), Time: {time.time()}\n")
+                    backlog_memory = []
 
         
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt detected. Exiting...")
+            
+            if len(backlog_memory) > 0:
+                print("Dumping memory to logs.txt...")
+                with open("logs.txt", "a") as f:
+                    for line in backlog_memory:
+                        f.write(f"Accel(x,y,z): ({line[0]}, {line[1]}, {line[2]})  Gyro(x,y,z): ({line[3]}, {line[4]}, {line[5]}), Time: {time.time()}\n")
+                backlog_memory = []
+
             with open("logs.txt", "a") as f:
                 f.write(f"END {time.time()}\n")
             break
