@@ -14,10 +14,11 @@ import websocket
 baud_rate = 38400  # IMU baud rate
 ax = ay = az = gx = gy = gz = 0
 s = None  # Serial port object
-global retryconenction, capture_stablization, finish_stablization, crashamount
+global retryconenction, capture_stablization, finish_stablization, crashamount, phone_imu_thread
 retryconenction = True
 capture_stablization = False
 finish_stablization = False
+phone_imu_thread = None
 crashamount = 0
 currentstate = "STANDYBY"
 
@@ -220,7 +221,7 @@ def phisical_conenction_connect():
 
 def phisical_conenction_update():
     global ax, ay, az, gx, gy, gz
-    if currentconfig["IMU_TYPE"] == "ESP32":
+    if currentconfig["IMU_TYPE"] == "ESP32" and s is not None:
         try:
                 line = s.readline().decode('utf-8').strip()
                 if line:
@@ -241,32 +242,51 @@ def phisical_conenction_update():
                         pass
         except serial.SerialException as e:
                 print(f"Serial communication error: {e}")
-                with open("logs.txt", "a") as f:
-                    f.write(f"ERROR: {e}, {time.time()}\n")
                 s.close()
                 return False
         return False
     elif currentconfig["IMU_TYPE"] == "Phone":
         try:
-            ws = websocket.create_connection(f"ws://{currentconfig['PHONE_IP']}/sensor/connect?type=android.sensor.accelerometer")
+            #Check if phone imu thread is running
+            global phone_imu_thread
+            if phone_imu_thread is None or not phone_imu_thread.is_alive():
+                print("Starting phone IMU thread")
+                phone_imu_thread = threading.Thread(target=phone_imu_thread_func)
+                phone_imu_thread.daemon = True
+                phone_imu_thread.start()
+            return True
+        except Exception as e:
+            print(f"Error starting or managing phone thread {e}")
+            return False
+
+def phone_imu_thread_func():
+    try:
+        print("Trying to connect to phone")
+        ws = websocket.create_connection(f"ws://{currentconfig['PHONE_IP']}/sensor/connect?type=android.sensor.accelerometer")
+        print("Connected to phone")
+    except Exception as e:
+        print(f"Error connecting to phone: {e}")
+        return
+    ws = websocket.create_connection(f"ws://{currentconfig['PHONE_IP']}/sensor/connect?type=android.sensor.accelerometer")
+    global ax, ay, az, gx, gy, gz
+    try:
+        while (currentconfig["IMU_TYPE"] == "Phone") and (currentstate == "RUNNING" or currentstate == "READY"):
             data = ws.recv()
-
             data = json.loads(data)
-
             values = data["values"]
-            timestamp = data["timestamp"]
-            accuracy = data["accuracy"]
-
             ax = int(values[0])
             ay = int(values[1])
             az = int(values[2])
-            gx = 0
+            gx = 0 # There's no point in getting gyro from phone, gyro data from esp32 is just for the funnies
             gy = 0
             gz = 0
-            return True
-        except Exception as e:
-            print(f"Error connecting to phone: {e}")
-            return False
+    except websocket.WebSocketConnectionClosedException:
+        print("WebSocket connection closed unexpectedly.")
+    except Exception as e:
+        print(f"Error in phone IMU thread: {e}")
+    finally:
+        print("Closing phone IMU thread")
+        ws.close()
 
 def run_gui(data_queue, stop_event):
     app_qt = QtWidgets.QApplication(sys.argv) # Renamed to avoid conflict with Flask app
