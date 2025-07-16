@@ -67,7 +67,7 @@ if phisical_conenction_connect():
         try:
             if phisical_conenction_update():
                 print(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}")
-
+                print("Memory size:", len(backlog_memory))
                 #Load into memory
                 backlog_memory.append((ax, ay, az, gx, gy, gz))
                 
