@@ -292,13 +292,33 @@ if __name__ == '__main__':
     flask_thread = threading.Thread(target=run_flask_app, daemon=True)
     flask_thread.start()
 
+
     while True:
         try:
             # Check for esp32 connection
             if not phisical_conenction_connect():
                 if currentstate != "STANDYBY":
                     currentstate = "STANDYBY"
+
+                #Load dummy data to prevent gui bug
+
+                try: 
+                    ignorevar2 = imu_display_data
+                except:
+                    #give time for backend to start 
+                    time.sleep(1) #TODO: Should be moved to check the thread and wait for it to be fully started.
+                    imu_display_data = (
+                        f"Ax: {0:04d}, Ay: {0:04d}, Az: {0:04d}\n"
+                        f"Gx: {0:04d}, Gy: {0:04d}, Gz: {0:04d}"
+                    )
+                    try:
+                        print(imu_display_data)
+                        data_queue.put_nowait(imu_display_data)
+                    except queue.Full:
+                        pass # Queue is full, skip update for this cycle
+
                 time.sleep(1) # Reduced sleep for quicker connection attempts
+
                 continue
             elif currentstate == "STANDYBY":
                 currentstate = "CONNECTED"

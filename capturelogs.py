@@ -64,7 +64,7 @@ def phisical_conenction_update():
 if phisical_conenction_connect():
     while True:
         try:
-            if phisical_conenction_update():
+            if phisical_conenction_update(): #TODO: load 100 lines into memory then dump into storage to save drives :3
                 print(f"Accel(x,y,z): ({ax}, {ay}, {az})  Gyro(x,y,z): ({gx}, {gy}, {gz}), Time: {time.time()}")
                 #Log to logs.txt
                 with open("logs.txt", "a") as f:
