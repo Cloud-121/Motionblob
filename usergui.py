@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout,
     QLabel, QPushButton, QMessageBox, QHBoxLayout,
     QGroupBox, QRadioButton, QButtonGroup, QLineEdit,
-    QProgressDialog # Import QProgressDialog
+    QProgressDialog
 )
 # 1. IMPORT QTIMER
 from PyQt5.QtCore import Qt, QTimer
