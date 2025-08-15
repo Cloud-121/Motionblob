@@ -23,7 +23,3 @@ Motionblob is a work-in-progress alternative to [MacMotionCues](https://github.c
 ## Contributing
 
 Contributions are welcome; Feel free to open issues, suggest features, or submit PRs ^^
-
-## Acknowledgement
-
-This README was inspired by [MacMotionCues](https://github.com/Lospi/MacMotionCues) which is inspired by [Reminders MenuBar](https://github.com/DamascenoRafael/reminders-menubar).
